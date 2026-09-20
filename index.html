@@ -1,1178 +1,878 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kugoo V1 BLE Diagnostic</title>
 
-    <title>Kugoo V1 — Bluetooth диагностика</title>
+<style>
+* {
+    box-sizing: border-box;
+}
 
-    <style>
-        * {
-            box-sizing: border-box;
-        }
+body {
+    margin: 0;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
 
-        body {
-            margin: 0;
-            padding: 20px;
-            background: #111;
-            color: #eee;
-            font-family: Arial, sans-serif;
-        }
+.container {
+    max-width: 1000px;
+    margin: auto;
+}
 
-        .container {
-            max-width: 650px;
-            margin: auto;
-        }
+h1 {
+    margin-top: 0;
+}
 
-        h1 {
-            text-align: center;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
+button {
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 4px;
+    cursor: pointer;
+    background: #238636;
+    color: white;
+    font-weight: bold;
+}
 
-        .card {
-            background: #1b1b1b;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-        }
+button.secondary {
+    background: #30363d;
+}
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #aaa;
-            font-size: 14px;
-        }
+button.danger {
+    background: #da3633;
+}
 
-        input {
-            width: 100%;
-            padding: 14px;
-            border-radius: 8px;
-            border: 1px solid #444;
-            background: #292929;
-            color: white;
-            font-size: 20px;
-            text-align: center;
-            letter-spacing: 5px;
-            outline: none;
-        }
+input {
+    background: #161b22;
+    color: white;
+    border: 1px solid #30363d;
+    border-radius: 7px;
+    padding: 11px;
+    width: 100%;
+    margin: 5px 0;
+}
 
-        input:focus {
-            border-color: #4caf50;
-        }
+.card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+}
 
-        button {
-            width: 100%;
-            padding: 14px;
-            margin-top: 12px;
+#log {
+    background: #05080b;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 12px;
+    height: 450px;
+    overflow-y: auto;
+    font-family: monospace;
+    white-space: pre-wrap;
+    font-size: 13px;
+}
 
-            border: 0;
-            border-radius: 8px;
+.ok {
+    color: #3fb950;
+}
 
-            color: white;
-            background: #2878ff;
+.err {
+    color: #ff7b72;
+}
 
-            font-size: 16px;
-            font-weight: bold;
+.info {
+    color: #58a6ff;
+}
 
-            cursor: pointer;
-        }
+.warn {
+    color: #d29922;
+}
 
-        button:hover {
-            background: #1767ed;
-        }
-
-        button:disabled {
-            background: #444;
-            color: #888;
-            cursor: not-allowed;
-        }
-
-        .danger {
-            background: #a83232;
-        }
-
-        .danger:hover {
-            background: #c33b3b;
-        }
-
-        .info {
-            background: #151515;
-            border-radius: 8px;
-            padding: 15px;
-            font-size: 13px;
-            line-height: 1.7;
-            word-break: break-all;
-        }
-
-        .value {
-            color: #6fd3ff;
-            font-family: monospace;
-        }
-
-        .status {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
-            background: #222;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .log-title {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .log-title span {
-            color: #aaa;
-        }
-
-        #clearLog {
-            width: auto;
-            padding: 7px 12px;
-            margin: 0;
-            font-size: 12px;
-            background: #333;
-        }
-
-        #log {
-            height: 330px;
-            overflow-y: auto;
-
-            background: #050505;
-            border: 1px solid #333;
-            border-radius: 8px;
-
-            padding: 12px;
-
-            font-family: monospace;
-            font-size: 12px;
-
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .log-line {
-            margin-bottom: 7px;
-        }
-
-        .time {
-            color: #666;
-        }
-
-        .normal {
-            color: #ddd;
-        }
-
-        .success {
-            color: #54e878;
-        }
-
-        .error {
-            color: #ff5555;
-        }
-
-        .warning {
-            color: #ffbd5a;
-        }
-
-        .incoming {
-            color: #c792ff;
-        }
-
-        .outgoing {
-            color: #55b7ff;
-        }
-
-        .small {
-            color: #777;
-            font-size: 12px;
-            line-height: 1.5;
-        }
-    </style>
+.char {
+    padding: 8px;
+    margin: 5px 0;
+    background: #0d1117;
+    border-radius: 6px;
+    font-family: monospace;
+}
+</style>
 </head>
 
 <body>
 
 <div class="container">
 
-    <h1>🛴 Kugoo V1 — Bluetooth диагностика</h1>
+<h1>🛴 Kugoo V1 BLE Diagnostic</h1>
 
-    <div class="card">
+<div class="card">
 
-        <label for="password">
-            6-значный пароль Bluetooth
-        </label>
+<button onclick="connect()">🔵 Подключиться</button>
+<button class="secondary" onclick="disconnect()">Отключиться</button>
+<button class="secondary" onclick="clearLog()">Очистить лог</button>
 
-        <input
-            id="password"
-            type="text"
-            inputmode="numeric"
-            maxlength="6"
-            autocomplete="off"
-            placeholder="000000"
-            value="000000"
-        >
+<div id="status">Статус: отключено</div>
 
-        <button id="connectButton">
-            🔵 Подключиться и проверить
-        </button>
-
-        <div id="status" class="status">
-            Не подключено
-        </div>
-
-    </div>
+</div>
 
 
-    <div class="card">
+<div class="card">
 
-        <div class="info">
+<h3>BLE-структура</h3>
 
-            <b>Устройство:</b>
-            <span id="deviceName" class="value">—</span>
+<div id="services">
+Пока устройство не подключено.
+</div>
 
-            <br>
-
-            <b>Сервис:</b>
-            <span id="serviceUuid" class="value">—</span>
-
-            <br>
-
-            <b>TX:</b>
-            <span id="txUuid" class="value">—</span>
-
-            <br>
-
-            <b>RX:</b>
-            <span id="rxUuid" class="value">—</span>
-
-        </div>
-
-    </div>
+</div>
 
 
-    <div class="card">
+<div class="card">
 
-        <div class="log-title">
+<h3>Ручная команда</h3>
 
-            <span>Лог Bluetooth</span>
+<input
+    id="command"
+    placeholder="Например: CODE=123456"
+>
 
-            <button id="clearLog">
-                Очистить
-            </button>
+<button onclick="sendCommand()">
+Отправить
+</button>
 
-        </div>
+<br>
 
-        <div id="log"></div>
+<button
+    class="secondary"
+    onclick="sendPreset('CODE=000000')">
+CODE=000000
+</button>
 
-    </div>
+<button
+    class="secondary"
+    onclick="sendPreset('LKSC+0000')">
+LKSC+0000
+</button>
+
+</div>
 
 
-    <div class="card">
+<div class="card">
 
-        <div class="small">
+<h3>Лог</h3>
 
-            <b>Что проверяется:</b><br><br>
+<div id="log"></div>
 
-            1. Подключение к Kugoo V1 по Bluetooth<br>
-            2. GATT-соединение<br>
-            3. Сервис Kugoo<br>
-            4. TX/RX характеристики<br>
-            5. Уведомления RX<br>
-            6. Команда <code>CODE=XXXXXX</code><br>
-            7. Ответ контроллера
-
-            <br><br>
-
-            Команда <code>LKSC+</code> здесь специально не используется.
-            Она относится к другому типу PIN-кода.
-
-        </div>
-
-    </div>
+</div>
 
 </div>
 
 
 <script>
 
-"use strict";
+let device = null;
+let server = null;
+
+let characteristics = [];
+
+let txCharacteristics = [];
+let notifyCharacteristics = [];
 
 
-/*
-==========================================================
-KUGOO UUID
-==========================================================
-*/
+/* =========================
+   LOG
+========================= */
 
-const KNOWN_SERVICES = [
+function log(text, type = "") {
 
-    "9546bdc0-60ba-11e9-8647-0002a5d5c51b",
-
-    "b1b99ca0-98e7-11e9-80fe-0002a5d5c51b",
-
-    "331023c0-fdcb-11e8-8eb2-0002a5d5c51b"
-
-];
-
-
-const KNOWN_WRITE_CHARACTERISTICS = [
-
-    "9546bdc1-60ba-11e9-8647-0002a5d5c51b",
-
-    "b1b99ca1-98e7-11e9-80fe-0002a5d5c51b",
-
-    "331023c1-fdcb-11e8-8eb2-0002a5d5c51b"
-
-];
-
-
-const KNOWN_READ_CHARACTERISTICS = [
-
-    "9546bdc4-60ba-11e9-8647-0002a5d5c51b",
-
-    "b1b99ca4-98e7-11e9-80fe-0002a5d5c51b",
-
-    "331023c4-fdcb-11e8-8eb2-0002a5d5c51b"
-
-];
-
-
-/*
-==========================================================
-VARIABLES
-==========================================================
-*/
-
-let bluetoothDevice = null;
-
-let gattServer = null;
-
-let selectedService = null;
-
-let txCharacteristic = null;
-
-let rxCharacteristic = null;
-
-
-/*
-==========================================================
-ELEMENTS
-==========================================================
-*/
-
-const passwordInput =
-    document.getElementById("password");
-
-const connectButton =
-    document.getElementById("connectButton");
-
-const clearLogButton =
-    document.getElementById("clearLog");
-
-const logElement =
-    document.getElementById("log");
-
-const statusElement =
-    document.getElementById("status");
-
-const deviceNameElement =
-    document.getElementById("deviceName");
-
-const serviceUuidElement =
-    document.getElementById("serviceUuid");
-
-const txUuidElement =
-    document.getElementById("txUuid");
-
-const rxUuidElement =
-    document.getElementById("rxUuid");
-
-
-/*
-==========================================================
-LOGGING
-==========================================================
-*/
-
-function addLog(message, type = "normal") {
+    const box = document.getElementById("log");
 
     const time =
         new Date().toLocaleTimeString();
 
     const line =
+        `[${time}] ${text}`;
+
+    const div =
         document.createElement("div");
 
-    line.className =
-        "log-line " + type;
+    div.textContent = line;
 
-    const timeSpan =
-        document.createElement("span");
+    if (type)
+        div.className = type;
 
-    timeSpan.className = "time";
+    box.appendChild(div);
 
-    timeSpan.textContent =
-        "[" + time + "] ";
+    box.scrollTop = box.scrollHeight;
 
-    const textSpan =
-        document.createElement("span");
-
-    textSpan.textContent =
-        message;
-
-    line.appendChild(timeSpan);
-
-    line.appendChild(textSpan);
-
-    logElement.appendChild(line);
-
-    logElement.scrollTop =
-        logElement.scrollHeight;
-
-    console.log(
-        "[" + type.toUpperCase() + "]",
-        message
-    );
+    console.log(line);
 }
 
 
-/*
-==========================================================
-HEX
-==========================================================
-*/
+function clearLog() {
 
-function bytesToHex(buffer) {
+    document.getElementById("log").innerHTML = "";
 
-    const bytes =
-        new Uint8Array(buffer);
+}
 
-    return Array
-        .from(bytes)
-        .map(
-            byte =>
-                byte
-                    .toString(16)
-                    .padStart(2, "0")
-                    .toUpperCase()
+
+/* =========================
+   HEX
+========================= */
+
+function bytesToHex(bytes) {
+
+    return Array.from(bytes)
+        .map(b =>
+            b.toString(16)
+            .padStart(2, "0")
+            .toUpperCase()
         )
         .join(" ");
+
 }
 
 
-/*
-==========================================================
-TEXT
-==========================================================
-*/
-
-function bytesToText(buffer) {
+function bytesToText(bytes) {
 
     try {
 
-        const decoder =
-            new TextDecoder("utf-8");
+        return new TextDecoder()
+            .decode(bytes)
+            .replace(/[^\x20-\x7E\r\n]/g, ".");
 
-        return decoder.decode(
-            new Uint8Array(buffer)
-        );
-
-    } catch (error) {
+    } catch {
 
         return "";
 
     }
+
 }
 
 
-/*
-==========================================================
-RX NOTIFICATION
-==========================================================
-*/
+function stringToBytes(str) {
+
+    return new TextEncoder().encode(str);
+
+}
+
+
+/* =========================
+   CONNECT
+========================= */
+
+async function connect() {
+
+    try {
+
+        if (!navigator.bluetooth) {
+
+            alert(
+                "Web Bluetooth не поддерживается этим браузером."
+            );
+
+            return;
+
+        }
+
+
+        log("Запрашиваем Kugoo V1...", "info");
+
+
+        device =
+            await navigator.bluetooth.requestDevice({
+
+                filters: [
+                    {
+                        name: "Kugoo V1"
+                    }
+                ],
+
+                optionalServices: [
+                    "b1b99ca0-98e7-11e9-80fe-0002a5d5c51b",
+                    "9546bdc0-60ba-11e9-8647-0002a5d5c51b"
+                ]
+
+            });
+
+
+        log(
+            `Устройство: ${device.name}`,
+            "ok"
+        );
+
+
+        device.addEventListener(
+            "gattserverdisconnected",
+            onDisconnected
+        );
+
+
+        log("Подключаемся к GATT...", "info");
+
+
+        server =
+            await device.gatt.connect();
+
+
+        log(
+            "GATT подключён.",
+            "ok"
+        );
+
+
+        document.getElementById("status")
+            .textContent =
+            "Статус: подключено";
+
+
+        await scanServices();
+
+
+    } catch (error) {
+
+        log(
+            "ОШИБКА: " + error,
+            "err"
+        );
+
+    }
+
+}
+
+
+/* =========================
+   DISCONNECT
+========================= */
+
+function disconnect() {
+
+    if (
+        device &&
+        device.gatt.connected
+    ) {
+
+        device.gatt.disconnect();
+
+    }
+
+}
+
+
+function onDisconnected() {
+
+    log(
+        "Устройство отключено.",
+        "warn"
+    );
+
+    document.getElementById("status")
+        .textContent =
+        "Статус: отключено";
+
+}
+
+
+/* =========================
+   SERVICE SCAN
+========================= */
+
+async function scanServices() {
+
+    characteristics = [];
+
+    txCharacteristics = [];
+
+    notifyCharacteristics = [];
+
+
+    const container =
+        document.getElementById("services");
+
+    container.innerHTML = "";
+
+
+    log(
+        "Получаем список GATT-сервисов...",
+        "info"
+    );
+
+
+    const services =
+        await server.getPrimaryServices();
+
+
+    log(
+        `Найдено сервисов: ${services.length}`,
+        "ok"
+    );
+
+
+    for (const service of services) {
+
+        log(
+            `SERVICE: ${service.uuid}`,
+            "info"
+        );
+
+
+        const serviceDiv =
+            document.createElement("div");
+
+        serviceDiv.className = "card";
+
+        serviceDiv.innerHTML =
+            `<b>SERVICE</b><br>${service.uuid}`;
+
+
+        container.appendChild(serviceDiv);
+
+
+        let chars;
+
+
+        try {
+
+            chars =
+                await service.getCharacteristics();
+
+        } catch (e) {
+
+            log(
+                `Не удалось получить характеристики: ${e}`,
+                "err"
+            );
+
+            continue;
+
+        }
+
+
+        log(
+            `Характеристик: ${chars.length}`
+        );
+
+
+        for (const characteristic of chars) {
+
+            characteristics.push(
+                characteristic
+            );
+
+
+            const props =
+                characteristic.properties;
+
+
+            log(
+                `CHAR: ${characteristic.uuid}`,
+                "info"
+            );
+
+
+            log(
+                `  read=${!!props.read} ` +
+                `write=${!!props.write} ` +
+                `writeNoResponse=${!!props.writeWithoutResponse} ` +
+                `notify=${!!props.notify} ` +
+                `indicate=${!!props.indicate}`
+            );
+
+
+            const charDiv =
+                document.createElement("div");
+
+            charDiv.className = "char";
+
+
+            charDiv.innerHTML = `
+                <b>${characteristic.uuid}</b><br>
+                read: ${!!props.read}
+                |
+                write: ${!!props.write}
+                |
+                writeNR: ${!!props.writeWithoutResponse}
+                |
+                notify: ${!!props.notify}
+                |
+                indicate: ${!!props.indicate}
+            `;
+
+
+            serviceDiv.appendChild(charDiv);
+
+
+            /*
+             * READ
+             */
+
+            if (props.read) {
+
+                try {
+
+                    const value =
+                        await characteristic.readValue();
+
+                    const bytes =
+                        new Uint8Array(
+                            value.buffer
+                        );
+
+
+                    log(
+                        `READ ${characteristic.uuid}`,
+                        "ok"
+                    );
+
+                    log(
+                        `  HEX: ${bytesToHex(bytes)}`
+                    );
+
+                    log(
+                        `  TEXT: ${bytesToText(bytes)}`
+                    );
+
+                } catch (e) {
+
+                    log(
+                        `READ ERROR ${characteristic.uuid}: ${e}`,
+                        "err"
+                    );
+
+                }
+
+            }
+
+
+            /*
+             * NOTIFICATIONS
+             */
+
+            if (
+                props.notify ||
+                props.indicate
+            ) {
+
+                try {
+
+                    await characteristic
+                        .startNotifications();
+
+
+                    characteristic.addEventListener(
+                        "characteristicvaluechanged",
+                        handleNotification
+                    );
+
+
+                    notifyCharacteristics
+                        .push(characteristic);
+
+
+                    log(
+                        `NOTIFY включён: ${characteristic.uuid}`,
+                        "ok"
+                    );
+
+                } catch (e) {
+
+                    log(
+                        `NOTIFY ERROR ${characteristic.uuid}: ${e}`,
+                        "err"
+                    );
+
+                }
+
+            }
+
+
+            /*
+             * WRITE
+             */
+
+            if (
+                props.write ||
+                props.writeWithoutResponse
+            ) {
+
+                txCharacteristics
+                    .push(characteristic);
+
+
+                log(
+                    `WRITE доступен: ${characteristic.uuid}`,
+                    "ok"
+                );
+
+            }
+
+        }
+
+    }
+
+
+    log(
+        "================================",
+        "info"
+    );
+
+    log(
+        `WRITE characteristics: ${txCharacteristics.length}`,
+        "info"
+    );
+
+    log(
+        `NOTIFY characteristics: ${notifyCharacteristics.length}`,
+        "info"
+    );
+
+    log(
+        "Сканирование завершено.",
+        "ok"
+    );
+
+}
+
+
+/* =========================
+   NOTIFICATION
+========================= */
 
 function handleNotification(event) {
 
     const value =
         event.target.value;
 
-    const buffer =
-        value.buffer.slice(
-            value.byteOffset,
-            value.byteOffset + value.byteLength
+    const bytes =
+        new Uint8Array(
+            value.buffer
         );
 
 
-    const hex =
-        bytesToHex(buffer);
+    log(
+        `RX ${event.target.uuid}`,
+        "ok"
+    );
+
+
+    log(
+        `  HEX: ${bytesToHex(bytes)}`
+    );
+
+
+    log(
+        `  TEXT: ${bytesToText(bytes)}`
+    );
+
+
+    /*
+     * Известные ответы Kugoo
+     */
 
     const text =
-        bytesToText(buffer);
+        bytesToText(bytes);
 
 
-    addLog(
-        "◄ ОТВЕТ HEX: " + hex,
-        "incoming"
-    );
+    if (text.includes("CODE_OK")) {
 
-
-    addLog(
-        "◄ ОТВЕТ TEXT: " +
-        JSON.stringify(text),
-        "incoming"
-    );
-
-
-    const clean =
-        text.trim();
-
-
-    /*
-    ------------------------------------------
-    CODE_OK
-    ------------------------------------------
-    */
-
-    if (clean.includes("CODE_OK")) {
-
-        addLog(
-            "================================",
-            "success"
+        log(
+            ">>> CODE_OK <<<",
+            "ok"
         );
 
-        addLog(
-            "✓ CODE_OK",
-            "success"
-        );
-
-        addLog(
-            "✓ ПАРОЛЬ ПРИНЯТ КОНТРОЛЛЕРОМ",
-            "success"
-        );
-
-        addLog(
-            "================================",
-            "success"
-        );
-
-        statusElement.textContent =
-            "✓ Пароль принят";
-
-        statusElement.style.color =
-            "#54e878";
-
-        return;
     }
 
 
-    /*
-    ------------------------------------------
-    CODE_NG
-    ------------------------------------------
-    */
+    if (text.includes("CODE_NG")) {
 
-    if (clean.includes("CODE_NG")) {
-
-        addLog(
-            "================================",
-            "error"
+        log(
+            ">>> CODE_NG <<<",
+            "warn"
         );
 
-        addLog(
-            "✗ CODE_NG",
-            "error"
-        );
-
-        addLog(
-            "✗ ПАРОЛЬ НЕ ПРИНЯТ",
-            "error"
-        );
-
-        addLog(
-            "================================",
-            "error"
-        );
-
-        statusElement.textContent =
-            "✗ Неверный пароль";
-
-        statusElement.style.color =
-            "#ff5555";
-
-        return;
     }
 
 
-    /*
-    ------------------------------------------
-    ERROR
-    ------------------------------------------
-    */
+    if (text.includes("ERROR")) {
 
-    if (clean === "ERROR") {
-
-        addLog(
-            "⚠ Контроллер вернул ERROR",
-            "warning"
+        log(
+            ">>> ERROR <<<",
+            "err"
         );
 
-        statusElement.textContent =
-            "⚠ Контроллер вернул ERROR";
-
-        statusElement.style.color =
-            "#ffbd5a";
-
-        return;
     }
 
-
-    /*
-    ------------------------------------------
-    OK
-    ------------------------------------------
-    */
-
-    if (clean === "OK" ||
-        clean.includes("OK")) {
-
-        addLog(
-            "✓ Контроллер вернул OK",
-            "success"
-        );
-
-        return;
-    }
-
-
-    /*
-    ------------------------------------------
-    UNKNOWN
-    ------------------------------------------
-    */
-
-    addLog(
-        "⚠ Неизвестный ответ контроллера",
-        "warning"
-    );
 }
 
 
-/*
-==========================================================
-FIND SERVICE
-==========================================================
-*/
+/* =========================
+   SEND
+========================= */
 
-async function findService(server) {
+async function sendPreset(command) {
 
-    addLog(
-        "Ищем сервисы Kugoo..."
-    );
+    document.getElementById("command")
+        .value = command;
 
+    await sendCommand();
 
-    for (const uuid of KNOWN_SERVICES) {
-
-        try {
-
-            const service =
-                await server.getPrimaryService(uuid);
-
-            addLog(
-                "✓ Найден сервис: " + uuid,
-                "success"
-            );
-
-            serviceUuidElement.textContent =
-                uuid;
-
-            return service;
-
-        } catch (error) {
-
-            addLog(
-                "Сервис не найден: " + uuid
-            );
-
-        }
-
-    }
-
-
-    return null;
 }
 
 
-/*
-==========================================================
-FIND TX
-==========================================================
-*/
+async function sendCommand() {
 
-async function findTX(service) {
+    const input =
+        document.getElementById("command");
 
-    addLog(
-        "Ищем TX characteristic..."
-    );
+    const command =
+        input.value.trim();
 
 
-    for (const uuid of KNOWN_WRITE_CHARACTERISTICS) {
+    if (!command) {
 
-        try {
-
-            const characteristic =
-                await service.getCharacteristic(uuid);
-
-            addLog(
-                "✓ TX найден: " + uuid,
-                "success"
-            );
-
-            txUuidElement.textContent =
-                uuid;
-
-            return characteristic;
-
-        } catch (error) {
-
-            addLog(
-                "TX не найден: " + uuid
-            );
-
-        }
-
-    }
-
-
-    return null;
-}
-
-
-/*
-==========================================================
-FIND RX
-==========================================================
-*/
-
-async function findRX(service) {
-
-    addLog(
-        "Ищем RX characteristic..."
-    );
-
-
-    for (const uuid of KNOWN_READ_CHARACTERISTICS) {
-
-        try {
-
-            const characteristic =
-                await service.getCharacteristic(uuid);
-
-            addLog(
-                "✓ RX найден: " + uuid,
-                "success"
-            );
-
-            rxUuidElement.textContent =
-                uuid;
-
-            return characteristic;
-
-        } catch (error) {
-
-            addLog(
-                "RX не найден: " + uuid
-            );
-
-        }
-
-    }
-
-
-    return null;
-}
-
-
-/*
-==========================================================
-CONNECT
-==========================================================
-*/
-
-async function connectToScooter() {
-
-    /*
-    ------------------------------------------
-    PASSWORD
-    ------------------------------------------
-    */
-
-    const password =
-        passwordInput.value.trim();
-
-
-    if (!/^[0-9]{6}$/.test(password)) {
-
-        addLog(
-            "Пароль должен содержать ровно 6 цифр.",
-            "error"
-        );
-
-        statusElement.textContent =
-            "Ошибка пароля";
+        alert("Введите команду.");
 
         return;
+
     }
 
 
+    if (!txCharacteristics.length) {
+
+        log(
+            "Нет WRITE-характеристик.",
+            "err"
+        );
+
+        return;
+
+    }
+
+
+    const bytes =
+        stringToBytes(command);
+
+
+    log(
+        "================================",
+        "info"
+    );
+
+
+    log(
+        `TX TEXT: ${command}`,
+        "info"
+    );
+
+
+    log(
+        `TX HEX: ${bytesToHex(bytes)}`
+    );
+
+
     /*
-    ------------------------------------------
-    RESET UI
-    ------------------------------------------
-    */
+     * Используем найденную V1 characteristic,
+     * если она присутствует.
+     *
+     * При нескольких WRITE сначала пробуем
+     * characteristic, наиболее похожую на
+     * известную b1b99ca1...
+     */
 
-    connectButton.disabled =
-        true;
+    let target =
+        txCharacteristics.find(c =>
+            c.uuid.toLowerCase()
+            .includes("b1b99ca1")
+        );
 
-    statusElement.textContent =
-        "Подключение...";
 
-    statusElement.style.color =
-        "#ddd";
+    if (!target)
+        target = txCharacteristics[0];
+
+
+    log(
+        `TX UUID: ${target.uuid}`,
+        "info"
+    );
 
 
     try {
 
-        /*
-        --------------------------------------
-        REQUEST DEVICE
-        --------------------------------------
-        */
+        if (
+            target.properties
+                .writeWithoutResponse
+        ) {
 
-        addLog(
-            "Запрашиваем Bluetooth-устройство..."
-        );
+            await target
+                .writeValueWithoutResponse(bytes);
 
+        } else {
 
-        bluetoothDevice =
-            await navigator.bluetooth.requestDevice({
-
-                acceptAllDevices: true,
-
-                optionalServices:
-                    KNOWN_SERVICES
-
-            });
-
-
-        deviceNameElement.textContent =
-            bluetoothDevice.name ||
-            "Без имени";
-
-
-        addLog(
-            "✓ Выбрано устройство: " +
-            (
-                bluetoothDevice.name ||
-                "Без имени"
-            ),
-            "success"
-        );
-
-
-        /*
-        --------------------------------------
-        GATT
-        --------------------------------------
-        */
-
-        addLog(
-            "Подключаемся к GATT..."
-        );
-
-
-        gattServer =
-            await bluetoothDevice.gatt.connect();
-
-
-        addLog(
-            "✓ GATT подключён",
-            "success"
-        );
-
-
-        /*
-        --------------------------------------
-        SERVICE
-        --------------------------------------
-        */
-
-        selectedService =
-            await findService(gattServer);
-
-
-        if (!selectedService) {
-
-            throw new Error(
-                "Сервис Kugoo не найден."
-            );
+            await target
+                .writeValue(bytes);
 
         }
 
 
-        /*
-        --------------------------------------
-        TX
-        --------------------------------------
-        */
-
-        txCharacteristic =
-            await findTX(
-                selectedService
-            );
-
-
-        if (!txCharacteristic) {
-
-            throw new Error(
-                "TX characteristic не найден."
-            );
-
-        }
-
-
-        /*
-        --------------------------------------
-        RX
-        --------------------------------------
-        */
-
-        rxCharacteristic =
-            await findRX(
-                selectedService
-            );
-
-
-        if (!rxCharacteristic) {
-
-            throw new Error(
-                "RX characteristic не найден."
-            );
-
-        }
-
-
-        /*
-        --------------------------------------
-        NOTIFICATIONS
-        --------------------------------------
-        */
-
-        addLog(
-            "Включаем RX notifications..."
+        log(
+            "Команда отправлена.",
+            "ok"
         );
 
+    } catch (e) {
 
-        await rxCharacteristic.startNotifications();
-
-
-        rxCharacteristic.addEventListener(
-            "characteristicvaluechanged",
-            handleNotification
+        log(
+            `TX ERROR: ${e}`,
+            "err"
         );
-
-
-        addLog(
-            "✓ RX notifications включены",
-            "success"
-        );
-
-
-        /*
-        --------------------------------------
-        SEND CODE
-        --------------------------------------
-        */
-
-        const command =
-            "CODE=" + password;
-
-
-        const encoder =
-            new TextEncoder();
-
-
-        const data =
-            encoder.encode(command);
-
-
-        addLog(
-            "--------------------------------",
-            "outgoing"
-        );
-
-
-        addLog(
-            "► ОТПРАВЛЯЕМ: " + command,
-            "outgoing"
-        );
-
-
-        addLog(
-            "► HEX: " +
-            bytesToHex(data),
-            "outgoing"
-        );
-
-
-        addLog(
-            "► Длина: " +
-            data.length +
-            " байт",
-            "outgoing"
-        );
-
-
-        addLog(
-            "--------------------------------",
-            "outgoing"
-        );
-
-
-        await txCharacteristic
-            .writeValueWithResponse(data);
-
-
-        addLog(
-            "✓ Команда отправлена",
-            "success"
-        );
-
-
-        addLog(
-            "Ожидаем ответ контроллера..."
-        );
-
-
-        statusElement.textContent =
-            "Ожидание ответа...";
-
-
-    } catch (error) {
-
-        addLog(
-            "❌ ОШИБКА: " +
-            error.message,
-            "error"
-        );
-
-
-        statusElement.textContent =
-            "Ошибка подключения";
-
-        statusElement.style.color =
-            "#ff5555";
-
-
-        console.error(error);
-
-
-        /*
-        --------------------------------------
-        DISCONNECT
-        --------------------------------------
-        */
-
-        try {
-
-            if (
-                bluetoothDevice &&
-                bluetoothDevice.gatt &&
-                bluetoothDevice.gatt.connected
-            ) {
-
-                bluetoothDevice.gatt.disconnect();
-
-            }
-
-        } catch (e) {}
 
     }
 
-
-    connectButton.disabled =
-        false;
 }
 
 
-/*
-==========================================================
-BUTTON
-==========================================================
-*/
+/* =========================
+   EXPORT LOG
+========================= */
 
-connectButton.addEventListener(
-    "click",
-    connectToScooter
-);
+function exportLog() {
+
+    const text =
+        document.getElementById("log")
+        .innerText;
 
 
-/*
-==========================================================
-CLEAR LOG
-==========================================================
-*/
-
-clearLogButton.addEventListener(
-    "click",
-    () => {
-
-        logElement.innerHTML = "";
-
-        addLog(
-            "Лог очищен."
+    const blob =
+        new Blob(
+            [text],
+            {
+                type: "text/plain"
+            }
         );
 
-    }
-);
+
+    const url =
+        URL.createObjectURL(blob);
 
 
-/*
-==========================================================
-INPUT — ONLY NUMBERS
-==========================================================
-*/
-
-passwordInput.addEventListener(
-    "input",
-    () => {
-
-        passwordInput.value =
-            passwordInput.value
-                .replace(/\D/g, "")
-                .slice(0, 6);
-
-    }
-);
+    const a =
+        document.createElement("a");
 
 
-/*
-==========================================================
-INITIAL LOG
-==========================================================
-*/
+    a.href = url;
+    a.download =
+        "kugoo-v1-ble-log.txt";
 
-addLog(
-    "Готово. Введи 6-значный пароль и нажми «Подключиться и проверить»."
-);
 
-addLog(
-    "Для начала попробуй 000000."
-);
+    a.click();
+
+
+    URL.revokeObjectURL(url);
+
+}
 
 </script>
 
