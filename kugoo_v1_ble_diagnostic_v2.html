@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kugoo V1 — BLE Diagnostic v2</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0d1117;color:#e6edf3;font-family:Arial,sans-serif;padding:18px}
+.wrap{max-width:900px;margin:auto}
+h1{font-size:24px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:15px;margin:14px 0}
+button{border:0;border-radius:8px;padding:11px 14px;margin:4px;cursor:pointer;background:#238636;color:#fff;font-weight:700}
+button.secondary{background:#30363d}
+button.warn{background:#9e6a03}
+button:disabled{opacity:.45;cursor:not-allowed}
+input{width:100%;padding:11px;background:#0d1117;color:#fff;border:1px solid #30363d;border-radius:8px;margin:5px 0}
+.status{padding:10px;background:#0d1117;border-radius:8px}
+.char{margin:10px 0;padding:12px;background:#0d1117;border:1px solid #30363d;border-radius:9px}
+.uuid{font-family:monospace;font-size:13px;word-break:break-all}
+pre{white-space:pre-wrap;word-break:break-word;background:#05080b;border:1px solid #30363d;border-radius:9px;padding:12px;min-height:320px;max-height:520px;overflow:auto;font:13px monospace}
+.ok{color:#3fb950}.err{color:#ff7b72}.info{color:#58a6ff}.warn{color:#d29922}
+.small{font-size:12px;color:#8b949e}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🛴 Kugoo V1 — BLE Diagnostic v2</h1>
+
+<div class="card">
+  <button onclick="connect()">🔵 Подключить V1</button>
+  <button class="secondary" onclick="disconnect()">Отключить</button>
+  <button class="secondary" onclick="clearLog()">Очистить лог</button>
+  <button class="secondary" onclick="downloadLog()">Сохранить лог</button>
+  <div id="status" class="status">Статус: отключено</div>
+</div>
+
+<div class="card">
+<h3>Характеристики V1</h3>
+<div class="small">
+Используются только чтение ca1/ca2/ca5 и запись команды CODE через ca1.
+Неизвестные write-операции в ca3/ca5 намеренно не выполняются.
+</div>
+
+<div class="char">
+  <b>ca1 — COMMAND / CODE</b>
+  <div class="uuid">b1b99ca1-98e7-11e9-80fe-0002a5d5c51b</div>
+  <button onclick="readChar('ca1')">READ ca1</button>
+</div>
+
+<div class="char">
+  <b>ca2 — READ ONLY</b>
+  <div class="uuid">b1b99ca2-98e7-11e9-80fe-0002a5d5c51b</div>
+  <button onclick="readChar('ca2')">READ ca2</button>
+</div>
+
+<div class="char">
+  <b>ca3 — WRITE ONLY</b>
+  <div class="uuid">b1b99ca3-98e7-11e9-80fe-0002a5d5c51b</div>
+  <div class="small">Запись отключена в этой версии.</div>
+</div>
+
+<div class="char">
+  <b>ca4 — NOTIFY / RESPONSE</b>
+  <div class="uuid">b1b99ca4-98e7-11e9-80fe-0002a5d5c51b</div>
+  <div id="notifyState">Уведомления не подключены.</div>
+</div>
+
+<div class="char">
+  <b>ca5 — READ / WRITE</b>
+  <div class="uuid">b1b99ca5-98e7-11e9-80fe-0002a5d5c51b</div>
+  <button onclick="readChar('ca5')">READ ca5</button>
+  <div class="small">Запись отключена в этой версии.</div>
+</div>
+</div>
+
+<div class="card">
+<h3>Команда CODE</h3>
+<input id="code" inputmode="numeric" maxlength="6" value="123456"
+       placeholder="6 цифр">
+<button onclick="sendCode()">Отправить CODE</button>
+<button class="secondary" onclick="sendCodeValue('000000')">000000</button>
+<button class="secondary" onclick="sendCodeValue('123456')">123456</button>
+</div>
+
+<div class="card">
+<h3>Сравнение состояния</h3>
+<button onclick="snapshot('BEFORE')">📸 Снимок BEFORE</button>
+<button onclick="snapshot('AFTER')">📸 Снимок AFTER</button>
+<div id="snapshotState" class="small">Снимков пока нет.</div>
+</div>
+
+<div class="card">
+<h3>Лог</h3>
+<pre id="log"></pre>
+</div>
+</div>
+
+<script>
+const UUID = {
+  service: "b1b99ca0-98e7-11e9-80fe-0002a5d5c51b",
+  ca1: "b1b99ca1-98e7-11e9-80fe-0002a5d5c51b",
+  ca2: "b1b99ca2-98e7-11e9-80fe-0002a5d5c51b",
+  ca3: "b1b99ca3-98e7-11e9-80fe-0002a5d5c51b",
+  ca4: "b1b99ca4-98e7-11e9-80fe-0002a5d5c51b",
+  ca5: "b1b99ca5-98e7-11e9-80fe-0002a5d5c51b"
+};
+
+let device = null;
+let server = null;
+let service = null;
+let chars = {};
+let rxLog = [];
+let snapshots = {BEFORE:null, AFTER:null};
+
+function log(msg, cls="") {
+  const el = document.getElementById("log");
+  const t = new Date().toLocaleTimeString();
+  const line = `[${t}] ${msg}`;
+  const div = document.createElement("div");
+  div.textContent = line;
+  if(cls) div.className = cls;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  rxLog.push(line);
+  console.log(line);
+}
+
+function clearLog(){
+  document.getElementById("log").innerHTML="";
+  rxLog=[];
+}
+
+function hex(bytes){
+  return [...bytes].map(x=>x.toString(16).padStart(2,"0").toUpperCase()).join(" ");
+}
+
+function text(bytes){
+  try {
+    return new TextDecoder().decode(bytes).replace(/[^\x20-\x7E\r\n]/g,".");
+  } catch(e){return ""}
+}
+
+function bytes(str){ return new TextEncoder().encode(str); }
+
+function connected(){
+  if(!server || !server.connected){
+    log("Устройство не подключено.","err");
+    return false;
+  }
+  return true;
+}
+
+async function connect(){
+  try{
+    if(!navigator.bluetooth){
+      alert("Этот браузер не поддерживает Web Bluetooth.");
+      return;
+    }
+
+    log("Запрашиваем Kugoo V1...","info");
+
+    device = await navigator.bluetooth.requestDevice({
+      filters:[{name:"Kugoo V1"}],
+      optionalServices:[UUID.service]
+    });
+
+    log("Устройство: "+device.name,"ok");
+
+    device.addEventListener("gattserverdisconnected",()=>{
+      document.getElementById("status").textContent="Статус: отключено";
+      log("GATT отключён.","warn");
+    });
+
+    server = await device.gatt.connect();
+    service = await server.getPrimaryService(UUID.service);
+
+    chars.ca1 = await service.getCharacteristic(UUID.ca1);
+    chars.ca2 = await service.getCharacteristic(UUID.ca2);
+    chars.ca3 = await service.getCharacteristic(UUID.ca3);
+    chars.ca4 = await service.getCharacteristic(UUID.ca4);
+    chars.ca5 = await service.getCharacteristic(UUID.ca5);
+
+    document.getElementById("status").textContent =
+      "Статус: Kugoo V1 подключён";
+
+    log("GATT подключён.","ok");
+    log("Сервис: "+UUID.service,"info");
+
+    await chars.ca4.startNotifications();
+    chars.ca4.addEventListener("characteristicvaluechanged", onNotify);
+
+    document.getElementById("notifyState").textContent =
+      "Уведомления ca4 включены.";
+
+    log("NOTIFY ca4 включён.","ok");
+
+    // Первичный снимок всех безопасных READ.
+    await readChar("ca1");
+    await readChar("ca2");
+    await readChar("ca5");
+
+    log("Первичный опрос завершён.","ok");
+
+  }catch(e){
+    log("ОШИБКА: "+e,"err");
+  }
+}
+
+function disconnect(){
+  if(device && device.gatt && device.gatt.connected)
+    device.gatt.disconnect();
+}
+
+async function readChar(which){
+  if(!connected()) return;
+
+  const c = chars[which];
+  if(!c){
+    log("Характеристика "+which+" не найдена.","err");
+    return;
+  }
+
+  try{
+    const v = await c.readValue();
+    const b = new Uint8Array(v.buffer.slice(v.byteOffset,v.byteOffset+v.byteLength));
+
+    log(`READ ${which} (${c.uuid})`,"info");
+    log("  LEN: "+b.length);
+    log("  HEX: "+hex(b));
+    log("  TEXT: "+text(b));
+
+  }catch(e){
+    log(`READ ${which} ERROR: ${e}`,"err");
+  }
+}
+
+function onNotify(ev){
+  const v = ev.target.value;
+  const b = new Uint8Array(v.buffer.slice(v.byteOffset,v.byteOffset+v.byteLength));
+  const t = text(b);
+
+  log("RX ca4","ok");
+  log("  LEN: "+b.length);
+  log("  HEX: "+hex(b));
+  log("  TEXT: "+t);
+
+  if(t.includes("CODE_OK")) log(">>> CODE_OK <<<","ok");
+  if(t.includes("CODE_NG")) log(">>> CODE_NG <<<","warn");
+  if(t.includes("ERROR")) log(">>> ERROR <<<","err");
+
+  // Сохраняем последнее уведомление для снимков.
+  window.lastRx = {hex:hex(b), text:t, len:b.length};
+}
+
+async function sendCodeValue(code){
+  document.getElementById("code").value = code;
+  await sendCode();
+}
+
+async function sendCode(){
+  if(!connected()) return;
+
+  const code = document.getElementById("code").value.trim();
+
+  if(!/^\d{6}$/.test(code)){
+    alert("CODE должен состоять ровно из 6 цифр.");
+    return;
+  }
+
+  const cmd = "CODE="+code;
+  const b = bytes(cmd);
+
+  log("================================","info");
+  log("TX ca1: "+cmd,"info");
+  log("TX HEX: "+hex(b));
+  log("TX LEN: "+b.length);
+
+  try{
+    if(chars.ca1.properties.writeWithoutResponse)
+      await chars.ca1.writeValueWithoutResponse(b);
+    else
+      await chars.ca1.writeValue(b);
+
+    log("WRITE ca1 выполнен.","ok");
+    log("Ждём ответ ca4...","info");
+
+    // Считываем ca1 после записи, чтобы увидеть,
+    // что контроллер хранит в характеристике.
+    await new Promise(r=>setTimeout(r,350));
+    await readChar("ca1");
+
+  }catch(e){
+    log("WRITE ca1 ERROR: "+e,"err");
+  }
+}
+
+async function snapshot(name){
+  if(!connected()) return;
+
+  log(`===== SNAPSHOT ${name} =====`,"info");
+
+  const data = {
+    time:new Date().toISOString(),
+    ca1:null, ca2:null, ca5:null,
+    lastRx:window.lastRx || null
+  };
+
+  for(const which of ["ca1","ca2","ca5"]){
+    try{
+      const v = await chars[which].readValue();
+      const b = new Uint8Array(v.buffer.slice(v.byteOffset,v.byteOffset+v.byteLength));
+      data[which] = {
+        len:b.length,
+        hex:hex(b),
+        text:text(b)
+      };
+      log(`${which}: ${data[which].hex}`);
+    }catch(e){
+      data[which] = {error:String(e)};
+      log(`${which}: ERROR ${e}`,"err");
+    }
+  }
+
+  snapshots[name]=data;
+  document.getElementById("snapshotState").textContent =
+    "BEFORE: "+(snapshots.BEFORE?"есть":"нет")+
+    " | AFTER: "+(snapshots.AFTER?"есть":"нет");
+
+  if(snapshots.BEFORE && snapshots.AFTER){
+    log("===== СРАВНЕНИЕ BEFORE / AFTER =====","info");
+    for(const k of ["ca1","ca2","ca5"]){
+      const a=snapshots.BEFORE[k];
+      const b=snapshots.AFTER[k];
+      log(`${k}: BEFORE=${a?.hex||a?.error} | AFTER=${b?.hex||b?.error}`);
+    }
+  }
+}
+
+function downloadLog(){
+  const extra =
+    "\n\nSNAPSHOTS:\n"+
+    JSON.stringify(snapshots,null,2)+
+    "\n\nLAST RX:\n"+
+    JSON.stringify(window.lastRx||null,null,2);
+
+  const blob = new Blob([rxLog.join("\n")+extra],{type:"text/plain"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="kugoo-v1-diagnostic-v2.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
